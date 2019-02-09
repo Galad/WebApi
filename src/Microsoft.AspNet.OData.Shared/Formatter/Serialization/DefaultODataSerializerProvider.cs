@@ -19,6 +19,18 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
     public partial class DefaultODataSerializerProvider : ODataSerializerProvider
     {
         private readonly IServiceProvider _rootContainer;
+        private readonly Lazy<ODataEnumSerializer> _enumSerializer;
+        private readonly Lazy<ODataPrimitiveSerializer> _primitiveSerializer;
+        private readonly Lazy<ODataDeltaFeedSerializer> _deltaFeedSerializer;
+        private readonly Lazy<ODataResourceSetSerializer> _resourceSetSerializer;
+        private readonly Lazy<ODataCollectionSerializer> _collectionSerializer;
+        private readonly Lazy<ODataResourceSerializer> _resourceSerializer;
+        private readonly Lazy<ODataServiceDocumentSerializer> _serviceDocumenteSerializer;
+        private readonly Lazy<ODataEntityReferenceLinkSerializer> _entityReferenceLinkSerializer;
+        private readonly Lazy<ODataEntityReferenceLinksSerializer> _entityReferenceLinksSerializer;
+        private readonly Lazy<ODataErrorSerializer> _errorSerializer;
+        private readonly Lazy<ODataMetadataSerializer> _metadataSerializer;
+        private readonly Lazy<ODataRawValueSerializer> _rawValueSerializer;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DefaultODataSerializerProvider"/> class.
@@ -32,6 +44,18 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             }
 
             _rootContainer = rootContainer;
+            _enumSerializer = new Lazy<ODataEnumSerializer>(() => _rootContainer.GetRequiredService<ODataEnumSerializer>());
+            _primitiveSerializer = new Lazy<ODataPrimitiveSerializer>(() => _rootContainer.GetRequiredService<ODataPrimitiveSerializer>());
+            _deltaFeedSerializer = new Lazy<ODataDeltaFeedSerializer>(() => _rootContainer.GetRequiredService<ODataDeltaFeedSerializer>());
+            _resourceSetSerializer = new Lazy<ODataResourceSetSerializer>(() => _rootContainer.GetRequiredService<ODataResourceSetSerializer>());
+            _collectionSerializer = new Lazy<ODataCollectionSerializer>(() => _rootContainer.GetRequiredService<ODataCollectionSerializer>());
+            _resourceSerializer = new Lazy<ODataResourceSerializer>(() => _rootContainer.GetRequiredService<ODataResourceSerializer>());
+            _serviceDocumenteSerializer = new Lazy<ODataServiceDocumentSerializer>(() => _rootContainer.GetRequiredService<ODataServiceDocumentSerializer>());
+            _entityReferenceLinkSerializer = new Lazy<ODataEntityReferenceLinkSerializer>(() => _rootContainer.GetRequiredService<ODataEntityReferenceLinkSerializer>());
+            _entityReferenceLinksSerializer = new Lazy<ODataEntityReferenceLinksSerializer>(() => _rootContainer.GetRequiredService<ODataEntityReferenceLinksSerializer>());
+            _errorSerializer = new Lazy<ODataErrorSerializer>(() => _rootContainer.GetRequiredService<ODataErrorSerializer>());
+            _metadataSerializer = new Lazy<ODataMetadataSerializer>(() => _rootContainer.GetRequiredService<ODataMetadataSerializer>());
+            _rawValueSerializer = new Lazy<ODataRawValueSerializer>(() => _rootContainer.GetRequiredService<ODataRawValueSerializer>());
         }
 
         /// <inheritdoc />
@@ -45,29 +69,29 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             switch (edmType.TypeKind())
             {
                 case EdmTypeKind.Enum:
-                    return _rootContainer.GetRequiredService<ODataEnumSerializer>();
+                    return _enumSerializer.Value;
 
                 case EdmTypeKind.Primitive:
-                    return _rootContainer.GetRequiredService<ODataPrimitiveSerializer>();
+                    return _primitiveSerializer.Value;
 
                 case EdmTypeKind.Collection:
                     IEdmCollectionTypeReference collectionType = edmType.AsCollection();
                     if (collectionType.Definition.IsDeltaFeed())
                     {
-                        return _rootContainer.GetRequiredService<ODataDeltaFeedSerializer>();
+                        return _deltaFeedSerializer.Value;
                     }
                     else if (collectionType.ElementType().IsEntity() || collectionType.ElementType().IsComplex())
                     {
-                        return _rootContainer.GetRequiredService<ODataResourceSetSerializer>();
+                        return _resourceSetSerializer.Value;
                     }
                     else
                     {
-                        return _rootContainer.GetRequiredService<ODataCollectionSerializer>();
+                        return _collectionSerializer.Value;
                     }
 
                 case EdmTypeKind.Complex:
                 case EdmTypeKind.Entity:
-                    return _rootContainer.GetRequiredService<ODataResourceSerializer>();
+                    return _resourceSerializer.Value;
 
                 default:
                     return null;
@@ -89,23 +113,23 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             // handle the special types.
             if (type == typeof(ODataServiceDocument))
             {
-                return _rootContainer.GetRequiredService<ODataServiceDocumentSerializer>();
+                return _serviceDocumenteSerializer.Value;
             }
             else if (type == typeof(Uri) || type == typeof(ODataEntityReferenceLink))
             {
-                return _rootContainer.GetRequiredService<ODataEntityReferenceLinkSerializer>();
+                return _entityReferenceLinkSerializer.Value;
             }
             else if (TypeHelper.IsTypeAssignableFrom(typeof(IEnumerable<Uri>), type) || type == typeof(ODataEntityReferenceLinks))
             {
-                return _rootContainer.GetRequiredService<ODataEntityReferenceLinksSerializer>();
+                return _entityReferenceLinksSerializer.Value;
             }
             else if (type == typeof(ODataError) || type == errorType)
             {
-                return _rootContainer.GetRequiredService<ODataErrorSerializer>();
+                return _errorSerializer.Value;
             }
             else if (TypeHelper.IsTypeAssignableFrom(typeof(IEdmModel), type))
             {
-                return _rootContainer.GetRequiredService<ODataMetadataSerializer>();
+                return _metadataSerializer.Value;
             }
 
             // Get the model. Using a Func<IEdmModel> to delay evaluation of the model
@@ -123,7 +147,7 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
 
                 if (((edmType.IsPrimitive() || edmType.IsEnum()) && isRawValueRequest) || isCountRequest)
                 {
-                    return _rootContainer.GetRequiredService<ODataRawValueSerializer>();
+                    return _rawValueSerializer.Value;
                 }
                 else
                 {
