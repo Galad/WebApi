@@ -8,6 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using Microsoft.AspNet.OData.Builder;
 using Microsoft.AspNet.OData.Common;
@@ -602,6 +603,8 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
             }
         }
 
+        private ConditionalWeakTable<IEdmModel, ConcurrentDictionary<IEdmNavigationSource, IReadOnlyList<IEdmStructuralProperty>>> _cachedConcurrencyProperties =
+            new ConditionalWeakTable<IEdmModel, ConcurrentDictionary<IEdmNavigationSource, IReadOnlyList<IEdmStructuralProperty>>>();
         /// <summary>
         /// Creates the ETag for the given entity.
         /// </summary>
@@ -617,7 +620,9 @@ namespace Microsoft.AspNet.OData.Formatter.Serialization
                 IEnumerable<IEdmStructuralProperty> concurrencyProperties;
                 if (model != null && navigationSource != null)
                 {
-                    concurrencyProperties = model.GetConcurrencyProperties(navigationSource).OrderBy(c => c.Name);
+                    concurrencyProperties = _cachedConcurrencyProperties
+                        .GetOrCreateValue(model)
+                        .GetOrAdd(navigationSource, n => model.GetConcurrencyProperties(n).OrderBy(c => c.Name).ToArray());                    
                 }
                 else
                 {
